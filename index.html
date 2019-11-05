@@ -13,7 +13,9 @@
 
         width = null;
         height = null;
+
         maxIterations = null;
+        maxIterationsPlus = null;
 
         xmin = null;
         xmax = null;
@@ -40,12 +42,14 @@
 
         pixelsData = null;
 
-        constructor({ width, height, maxIterations, xmin, xmax, xFactor, ymin, ymax, yFactor, centerX, centerY,
+        constructor({ width, height, maxIterations, maxIterationsPlus, xmin, xmax, xFactor, ymin, ymax, yFactor, centerX, centerY,
                         zoomFactor, colorChangeRate, whiteInnerPoints, cyanToRed, pinkToGreen, yellowToBlue }) {
 
             this.width = width ? width : 500;
             this.height = height ? height : 500;
+
             this.maxIterations = maxIterations ? maxIterations : 1000;
+            this.maxIterationsPlus = maxIterationsPlus ? maxIterationsPlus : 0;
 
             this.xmin = xmin ? xmin : -2;
             this.xmax = xmax ? xmax : 2;
@@ -96,6 +100,7 @@
                 this.xFactor *= this.zoomFactor;
                 this.yFactor *= this.zoomFactor;
             }
+            this.maxIterations += this.maxIterationsPlus ? this.maxIterationsPlus : 0;
             this.render();
         }
 
@@ -158,20 +163,20 @@
                             this.pixelsData[pixelIndex + 3] = this.whiteInnerPoints ? 0 : 255;
                         } else {
                             const color = this.colorChangeRate * Math.log(iteration) / Math.log(this.maxIterations);
-
                             if (color < 1) {
-                                this.pixelsData[pixelIndex] = this.cyanToRed * color;
+                                this.pixelsData[pixelIndex] = 0;
                                 this.pixelsData[pixelIndex + 1] = 0;
-                                this.pixelsData[pixelIndex + 2] = 0;
+                                this.pixelsData[pixelIndex + 2] = this.yellowToBlue * color;
+
                             }
                             else if (color < 2) {
-                                this.pixelsData[pixelIndex] = this.cyanToRed;
-                                this.pixelsData[pixelIndex + 1] = this.pinkToGreen * (color - 1);
-                                this.pixelsData[pixelIndex + 2] = 0;
+                                this.pixelsData[pixelIndex] = 0;
+                                this.pixelsData[pixelIndex + 1] = this.pinkToGreen* (color - 1);
+                                this.pixelsData[pixelIndex + 2] = this.yellowToBlue;
                             } else {
-                                this.pixelsData[pixelIndex] = this.cyanToRed;
+                                this.pixelsData[pixelIndex] = this.cyanToRed * (color - 2);
                                 this.pixelsData[pixelIndex + 1] = this.pinkToGreen;
-                                this.pixelsData[pixelIndex + 2] = this.yellowToBlue * (color - 2);
+                                this.pixelsData[pixelIndex + 2] = this.yellowToBlue;
                             }
                             this.pixelsData[pixelIndex + 3] = 255;
                         }
@@ -183,10 +188,14 @@
         }
     }
 
+    // TODO use HSV color schema with convert to RGB
+    // TODO use WebGL for rendering
+    // TODO add aspectRatio for non-squared canvas
     const mandelbrot = new Mandelbrot({
-        height: window.innerHeight - 5,
         width: window.innerWidth - 5,
-        maxIterations: 1000,
+        height: window.innerHeight - 5,
+        maxIterations: 100,
+        maxIterationsPlus: 20,
         xmin: -2,
         xmax: 2,
         xFactor: 4,
@@ -195,7 +204,7 @@
         yFactor: 4,
         centerX: 0,
         centerY: 0,
-        colorChangeRate: 5,
+        colorChangeRate: 3,
         whiteInnerPoints: false,
         cyanToRed: 255,
         pinkToGreen: 255,
