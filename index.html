@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mandelbrot Set</title>
+</head>
+    <body style="margin: 0">
+    </body>
+</html>
+
+<script type="text/javascript">
+    class Mandelbrot {
+
+        width = null;
+        height = null;
+        maxIterations = null;
+
+        xmin = null;
+        xmax = null;
+        xFactor = null;
+        ymin = null;
+        ymax = null;
+        yFactor = null;
+
+        centerX = null;
+        centerY = null;
+
+        zoomFactor = null;
+
+        colorChangeRate = null;
+        whiteInnerPoints = null;
+
+        cyanToRed = null;
+        pinkToGreen = null;
+        yellowToBlue = null;
+
+        canvasNode = null;
+        canvasContext = null;
+        canvasImage = null;
+
+        pixelsData = null;
+
+        constructor({ width, height, maxIterations, xmin, xmax, xFactor, ymin, ymax, yFactor, centerX, centerY,
+                        zoomFactor, colorChangeRate, whiteInnerPoints, cyanToRed, pinkToGreen, yellowToBlue }) {
+
+            this.width = width ? width : 500;
+            this.height = height ? height : 500;
+            this.maxIterations = maxIterations ? maxIterations : 1000;
+
+            this.xmin = xmin ? xmin : -2;
+            this.xmax = xmax ? xmax : 2;
+            this.xFactor = xFactor ? xFactor : this.xmax - this.xmin;
+            this.ymin = ymin ? ymin : -2;
+            this.ymax = ymax ? ymax : 2;
+            this.yFactor = yFactor ? yFactor : this.ymax - this.ymin;
+
+            this.centerX = centerX ? centerX : 0;
+            this.centerY = centerY ? centerY : 0;
+
+            this.zoomFactor = zoomFactor ? zoomFactor : 0.9;
+
+            this.colorChangeRate = colorChangeRate ? colorChangeRate : 3;
+            this.whiteInnerPoints = !!whiteInnerPoints;
+
+            this.cyanToRed = cyanToRed ? cyanToRed : 255;
+            this.pinkToGreen = pinkToGreen ? pinkToGreen : 255;
+            this.yellowToBlue = yellowToBlue ? yellowToBlue : 255;
+
+            this.initCanvas();
+        }
+
+        initCanvas() {
+            this.canvasNode = document.createElement('canvas');
+
+            this.canvasNode.width = this.width;
+            this.canvasNode.height = this.height;
+
+            document.body.insertBefore(this.canvasNode, document.body.childNodes[0]);
+
+            this.canvasContext = this.canvasNode.getContext('2d');
+            this.canvasImage = this.canvasContext.getImageData(0, 0, this.width, this.height);
+
+            this.pixelsData = this.canvasImage.data;
+        }
+
+        addEventListeners() {
+            this.canvasNode.addEventListener('wheel', this.wheelEventListener.bind(this));
+            this.canvasNode.addEventListener('click', this.clickEventListener.bind(this));
+        }
+
+        wheelEventListener({ deltaY }) {
+            if (deltaY && deltaY > 0) {
+                this.xFactor /= this.zoomFactor;
+                this.yFactor /= this.zoomFactor;
+            } else if (deltaY && deltaY < 0) {
+                this.xFactor *= this.zoomFactor;
+                this.yFactor *= this.zoomFactor;
+            }
+            this.render();
+        }
+
+        clickEventListener({ x, y }) {
+            this.setCenterByPixels({ x, y });
+            this.render();
+        }
+
+        setCenterByPixels({ x, y }) {
+            this.centerX = this.getXConvertedValue(x);
+            this.centerY = this.getYConvertedValue(y);
+        }
+
+        getXConvertedValue(x) {
+            return x * this.xFactor / this.width - this.xFactor / 2 + this.centerX;
+        }
+
+        getYConvertedValue(y) {
+            return -(y * this.yFactor / this.height - this.yFactor / 2) + this.centerY;
+        }
+
+        removeEventListeners() {
+            this.canvasNode.removeEventListener('wheel', this.wheelEventListener);
+            this.canvasNode.removeEventListener('click', this.clickEventListener);
+        }
+
+        mandelbrotIteration(cx, cy) {
+            let x = 0;
+            let y = 0;
+            let xx = 0;
+            let yy = 0;
+            let xy = 0;
+
+            let i = this.maxIterations;
+            while (i-- && xx + yy <= 4) {
+                xy = x * y;
+                xx = x ** 2;
+                yy = y ** 2;
+                x = xx - yy + cx;
+                y = xy + xy + cy;
+            }
+            return this.maxIterations - i;
+        }
+
+        render() {
+            setTimeout(() => {
+                console.time('Mandelbrot');
+                for (let ix = 0; ix < this.width; ix++) {
+                    for (let iy = 0; iy < this.height; iy++) {
+                        const xCoordConvertedValue = this.getXConvertedValue(ix);
+                        const yCoordConvertedValue = this.getYConvertedValue(iy);
+                        const iteration = this.mandelbrotIteration(xCoordConvertedValue, yCoordConvertedValue);
+                        const pixelIndex = 4 * (this.width * iy + ix);
+
+                        if (iteration > this.maxIterations) {
+                            // try to comment it :)
+                            this.pixelsData[pixelIndex] = 0;
+                            this.pixelsData[pixelIndex + 1] = 0;
+                            this.pixelsData[pixelIndex + 2] = 0;
+                            this.pixelsData[pixelIndex + 3] = this.whiteInnerPoints ? 0 : 255;
+                        } else {
+                            const color = this.colorChangeRate * Math.log(iteration) / Math.log(this.maxIterations);
+
+                            if (color < 1) {
+                                this.pixelsData[pixelIndex] = this.cyanToRed * color;
+                                this.pixelsData[pixelIndex + 1] = 0;
+                                this.pixelsData[pixelIndex + 2] = 0;
+                            }
+                            else if (color < 2) {
+                                this.pixelsData[pixelIndex] = this.cyanToRed;
+                                this.pixelsData[pixelIndex + 1] = this.pinkToGreen * (color - 1);
+                                this.pixelsData[pixelIndex + 2] = 0;
+                            } else {
+                                this.pixelsData[pixelIndex] = this.cyanToRed;
+                                this.pixelsData[pixelIndex + 1] = this.pinkToGreen;
+                                this.pixelsData[pixelIndex + 2] = this.yellowToBlue * (color - 2);
+                            }
+                            this.pixelsData[pixelIndex + 3] = 255;
+                        }
+                    }
+                }
+                this.canvasContext.putImageData(this.canvasImage, 0, 0);
+                console.timeEnd('Mandelbrot');
+            }, 0);
+        }
+    }
+
+    const mandelbrot = new Mandelbrot({
+        height: window.innerHeight - 5,
+        width: window.innerWidth - 5,
+        maxIterations: 1000,
+        xmin: -2,
+        xmax: 2,
+        xFactor: 4,
+        ymin: -2,
+        ymax: 2,
+        yFactor: 4,
+        centerX: 0,
+        centerY: 0,
+        colorChangeRate: 5,
+        whiteInnerPoints: false,
+        cyanToRed: 255,
+        pinkToGreen: 255,
+        yellowToBlue: 255,
+    });
+
+    mandelbrot.render();
+    mandelbrot.addEventListeners();
+    // mandelbrot.removeEventListeners();
+    window.madelbrot = mandelbrot;
+</script>
