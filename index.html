@@ -25,15 +25,13 @@
             uniform vec2 resolution;
             uniform vec2 center;
             uniform float scale;
-            uniform vec2 selectedPoint;
-            uniform float selectedRadius;
 
             void main() {
                 vec2 c = (gl_FragCoord.xy - resolution * 0.5) / min(resolution.x, resolution.y) * scale + center;
                 vec2 z = c;
                 float intensity = 0.0;
 
-                for (int i = 0; i < 300; i++) {
+                for (int i = 0; i < 2300; i++) {
                     if (length(z) > 2.0) {
                         intensity = float(i) / 300.0;
                         break;
@@ -41,15 +39,8 @@
                     z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
                 }
 
-                // Darker color scheme
-                vec3 color = vec3(0.1 + 0.1 * sin(intensity * 10.0), 0.1 + 0.1 * cos(intensity * 5.0), 0.1 + 0.1 * sin(intensity * 7.0));
-                
-                // Highlight the selected point with a 3-pixel radius circle
-                vec2 diff = gl_FragCoord.xy - selectedPoint;
-                float distanceToSelectedPoint = length(diff);
-                if (distanceToSelectedPoint < selectedRadius) {
-                    color = vec3(1.0, 0.0, 0.0);  // Red circle color
-                }
+                // Original color scheme
+                vec3 color = vec3(intensity);
 
                 gl_FragColor = vec4(color, 1.0);
             }
@@ -102,109 +93,38 @@
         const resolutionUniform = gl.getUniformLocation(program, 'resolution');
         const centerUniform = gl.getUniformLocation(program, 'center');
         const scaleUniform = gl.getUniformLocation(program, 'scale');
-        const selectedPointUniform = gl.getUniformLocation(program, 'selectedPoint');
-        const selectedRadiusUniform = gl.getUniformLocation(program, 'selectedRadius');
 
-        let center = { x: 0, y: 0 };
-        let scale = 2.7;  // Initial scale adjustment
-        let dragFactor = 0.05;  // Initial drag factor
-        let selectedPoint = null;
-        let selectedRadius = 0;
+        let center = { x: -0.743643887037158704752191506114774, y: 0.131825904205311970493132056385139 };
+        let scale = 2.7;
 
         resizeCanvas();
 
         window.addEventListener('resize', resizeCanvas);
-        canvas.addEventListener('mousedown', handleMouseDown);
-        canvas.addEventListener('mousemove', handleMouseMove);
-        canvas.addEventListener('mouseup', handleMouseUp);
-        canvas.addEventListener('contextmenu', handleContextMenu);
-        canvas.addEventListener('wheel', handleZoom);
-
-        let isDragging = false;
-        let lastMousePos = { x: 0, y: 0 };
+        requestAnimationFrame(render);
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             gl.viewport(0, 0, canvas.width, canvas.height);
-
-            // Adjust the initial render to be 10% closer to the user
-            scale *= 0.9;
-        }
-
-        function handleMouseDown(event) {
-            isDragging = true;
-            lastMousePos = { x: event.clientX, y: event.clientY };
-        }
-
-        function handleMouseMove(event) {
-            if (isDragging) {
-                const deltaX = event.clientX - lastMousePos.x;
-                const deltaY = event.clientY - lastMousePos.y;
-
-                // Adjust the drag speed based on the scale
-                const dragSpeed = dragFactor / scale;
-                center.x -= deltaX * dragSpeed;
-                center.y += deltaY * dragSpeed;
-
-                lastMousePos = { x: event.clientX, y: event.clientY };
-            }
-        }
-
-        function handleMouseUp() {
-            isDragging = false;
-        }
-
-        function handleContextMenu(event) {
-            event.preventDefault();
-
-            const rect = canvas.getBoundingClientRect();
-            const clickX = event.clientX - rect.left;
-            const clickY = event.clientY - rect.top;
-
-            // Convert click coordinates to Mandelbrot coordinates
-            const mandelbrotX = (clickX / canvas.width - 0.5) * scale + center.x;
-            const mandelbrotY = (0.5 - clickY / canvas.height) * scale + center.y;
-
-            // Set the selected point and radius
-            selectedPoint = { x: mandelbrotX, y: mandelbrotY };
-            selectedRadius = 10;
-        }
-
-        function handleZoom(event) {
-            const zoomSpeed = 0.001;
-            event.preventDefault();
-
-            const zoomFactor = Math.exp(event.deltaY * -zoomSpeed);
-            const oldScale = scale;
-            scale *= zoomFactor;
-
-            // If there's a selected point, adjust center to zoom towards it
-            if (selectedPoint) {
-                center.x += (selectedPoint.x - center.x) / oldScale * (1 - 1 / zoomFactor);
-                center.y += (selectedPoint.y - center.y) / oldScale * (1 - 1 / zoomFactor);
-
-                // Decrease the drag factor over time after each zoom-in operation
-                dragFactor *= 0.9;
-            }
         }
 
         function render() {
             gl.uniform2f(resolutionUniform, canvas.width, canvas.height);
             gl.uniform2f(centerUniform, center.x, center.y);
             gl.uniform1f(scaleUniform, scale);
-            gl.uniform2f(selectedPointUniform, selectedPoint ? selectedPoint.x : 0, selectedPoint ? selectedPoint.y : 0);
-            gl.uniform1f(selectedRadiusUniform, selectedRadius);
 
             gl.clearColor(0, 0, 0, 1);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
+            // Adjust scale for a smooth zoom
+            scale *= 0.999;
+
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-            requestAnimationFrame(render);
+            if (scale > 0.0001) {
+                requestAnimationFrame(render);
+            }
         }
-
-        render();
     </script>
 </body>
 </html>
